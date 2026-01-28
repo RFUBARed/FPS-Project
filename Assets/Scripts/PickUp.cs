@@ -65,7 +65,7 @@ public class Pickup : MonoBehaviour
         if (!isLookedAt) return;                                 // only when aiming at item
 
         if (player.gun != null)
-            Destroy(player.gun.gameObject);                      // remove current gun
+            player.OnDrop(); //drop current gun                     
 
         // spawn weapon under GunHolder (view model)
         GameObject newWeapon = Instantiate(weaponPrefab, player.gunHolder);

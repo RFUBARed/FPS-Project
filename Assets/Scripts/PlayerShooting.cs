@@ -24,6 +24,15 @@ public class PlayerShooting : MonoBehaviour
             gun.TryReload();
     }
 
+    public void OnDrop()
+    {
+        if (gun != null)
+        {
+            gun.Drop();
+            gun = null;
+        }
+    }
+
     // Update is called once per frame
     void Update()
     {

@@ -180,6 +180,7 @@ MonoBehaviour:
   recoilDistance: 0.1
   recoilSpeed: 15
   weaponFlash: {fileID: 7707487466257311765, guid: 59ed64ad3083fb348af13a22b80610a1, type: 3}
+  droppedWeapon: {fileID: 5786097810451525583, guid: f381d28c3fe6b15419f2d7d67044434b, type: 3}
 --- !u!1 &5836183803064680627
 GameObject:
   m_ObjectHideFlags: 0
