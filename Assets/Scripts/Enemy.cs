@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.AI;                           // Needed for NavMeshAgent
 
@@ -15,9 +16,9 @@ public class Enemy : MonoBehaviour
     public int currentPointIndex = 0;            // Current patrol point index
     public Vector3 currentTarget;                // Current patrol target
     public float positionThreshold = 2f;         // Distance considered "reached" for patrol point
-    public float idleTime = 5f;                  // Idle duration at patrol points
+    public float idleTime = 1f;                  // Idle duration at patrol points
     public float attackDistance = 5f;            // Distance at which enemy attacks
-    public float maxVisionDistance = 20f;        // How far enemy can see the player
+    public float maxVisionDistance = 10f;        // How far enemy can see the player
     public float minimumChasingHealth = 30f;     // Below this, enemy will avoid player
     public Transform[] patrolPoints;             // Array of patrol points
     private float idleTimeCounter;               // Counter for idle duration
@@ -29,8 +30,19 @@ public class Enemy : MonoBehaviour
     public enum State { Idle, Patrolling, Chasing, Attacking }
     public State state = State.Idle;             // Default state is Idle
 
+    public GameObject bulletPrefab;
+    public Transform bulletSpawnPoint;
+    public float bloom;
+    public float fireRate;
+    public GameObject weaponFlash;
+
+    private float lastShotTime = 0f;
+
     void Start()
     {
+        //currentPointIndex = 0;
+        //currentTarget = patrolPoints[currentPointIndex].position;
+
         rb = GetComponent<Rigidbody>();
         rend = GetComponent<Renderer>();    // Visual feedback (blink on hit, etc.)
         originalMat = rend.material;
@@ -42,8 +54,10 @@ public class Enemy : MonoBehaviour
 
         // Patrol points setup
         GameObject patrolParent = GameObject.FindGameObjectWithTag("PatrolPoint");
-        patrolPoints = new List<Transform>(patrolParent.GetComponentsInChildren<Transform>())
-            .FindAll(t => t != patrolParent.transform).ToArray();
+        patrolPoints = patrolParent
+            .GetComponentsInChildren<Transform>()
+            .Where(t => t != patrolParent.transform)
+            .ToArray();
 
         idleTimeCounter = idleTime;
     }
@@ -74,12 +88,14 @@ public class Enemy : MonoBehaviour
 
         // Always look at player if seen
         LookAtPlayer();
+
+        SetLastKnownPlayerPosition();
     }
 
     private void OnCollisionEnter(Collision collision)
     {
         if (!this.enabled) return; // If enemy is dead, do nothing
-        if (collision.gameObject.CompareTag("Damage"))
+        if (collision.gameObject.CompareTag("damage"))
         {
             health -= 10;           // Lose 10 health per hit
             if (health <= 0)
@@ -100,7 +116,7 @@ public class Enemy : MonoBehaviour
         transform.rotation = Quaternion.Euler(
             transform.rotation.x,
             transform.rotation.y,
-            transform.rotation.z + 15f // Slight rotation on Z so enemy tips over
+            transform.rotation.z + 5f // Slight rotation on Z so enemy tips over
         );
         this.enabled = false;              // Disable script
     }
@@ -118,9 +134,10 @@ public class Enemy : MonoBehaviour
         idleTimeCounter -= Time.deltaTime;
         if (idleTimeCounter <= 0f)
         {
-            state = State.Patrolling;      // Switch to patrol after idle
+            state = State.Patrolling;      // Switch to patrol after idl
             idleTimeCounter = idleTime;    // Reset idle timer
         }
+        canSeePlayer=false;
     }
 
     private void Patrolling()
@@ -141,13 +158,14 @@ public class Enemy : MonoBehaviour
         {
             agent.SetDestination(currentTarget); // Move toward current target
         }
+        canSeePlayer = false;
     }
 
     private void Attacking()
     {
         idleTimeCounter = idleTime;
         agent.ResetPath();                  // Stand still while "attacking"
-        // Shooting logic will be added in next episode
+        Shoot();
 
         if (Vector3.Distance(transform.position, playerTransform.position) > attackDistance || !canSeePlayer)
         {
@@ -197,7 +215,7 @@ public class Enemy : MonoBehaviour
 
     private void SetLastKnownPlayerPosition()
     {
-        if (!canSeePlayer)
+        if (canSeePlayer)
         {
             lastKnownPlayerPosition = playerTransform.position;
         }
@@ -210,13 +228,55 @@ public class Enemy : MonoBehaviour
         if (Physics.Raycast(transform.position, directionToPlayer, out hit, maxVisionDistance))
         {
             canSeePlayer = hit.transform == playerTransform; // True if ray hits player directly
-        }
 
-        if (canSeePlayer && state != State.Attacking)
-        {
-            state = State.Chasing; // Begin chasing if player visible
+            if (canSeePlayer && state != State.Attacking)
+            {
+                state = State.Chasing; // Begin chasing if player visible
+            }
+
         }
 
         SetLastKnownPlayerPosition();
+    }
+    private void Shoot()
+    {
+        // Only shoot if enough time has passed since last shot
+        if (Time.time > lastShotTime + fireRate)
+        {
+            // Calculate direction from enemy to player
+            Vector3 directionToPlayer = playerTransform.position - transform.position;
+            directionToPlayer.Normalize(); // Make it a unit vector for consistent rotation
+
+            // Set bullet rotation to point towards player
+            Quaternion bulletRotation = Quaternion.LookRotation(directionToPlayer);
+
+            // Set up bullet inaccuracy/spread
+            float maxInaccuracy = 10f;                      // Maximum deviation in degrees
+            float currentInaccuracy = bloom * maxInaccuracy; // Apply enemy bloom factor
+
+            // Randomly vary yaw (horizontal) and pitch (vertical) within inaccuracy range
+            float randomYaw = Random.Range(-currentInaccuracy, currentInaccuracy);
+            float randomPitch = Random.Range(-currentInaccuracy, currentInaccuracy);
+
+            // Apply inaccuracy and rotate bullet towards player
+            bulletRotation *= Quaternion.Euler(randomPitch, randomYaw + 90f, 0f);
+
+            // Spawn the bullet prefab at the spawn point with calculated rotation
+            Instantiate(
+                bulletPrefab,
+                bulletSpawnPoint.position,
+                bulletRotation
+            );
+
+            // Spawn weapon flash effect at the spawn point
+            Instantiate(
+                weaponFlash,
+                bulletSpawnPoint.position,
+                bulletSpawnPoint.rotation
+            );
+
+            // Record the time of this shot
+            lastShotTime = Time.time;
+        }
     }
 }

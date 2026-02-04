@@ -874,6 +874,11 @@ MonoBehaviour:
   patrolPoints:
   - {fileID: 1554023143}
   state: 0
+  bulletPrefab: {fileID: 5341742223406746680, guid: 9c3cddd6060b7cc4eadfb9cefcf6e7db, type: 3}
+  bulletSpawnPoint: {fileID: 5096686506410940486}
+  bloom: 0.75
+  fireRate: 0.5
+  weaponFlash: {fileID: 7707487466257311765, guid: 59ed64ad3083fb348af13a22b80610a1, type: 3}
 --- !u!195 &1188312323
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -1050,7 +1055,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+  - {fileID: 2100000, guid: b3e7bae10d29a6440b4a8f194a877251, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
