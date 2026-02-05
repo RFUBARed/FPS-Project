@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 using UnityEngine.InputSystem;//inptu system
@@ -11,14 +12,20 @@ public class PlayerMovement : MonoBehaviour
     public float groundDistance = 0.4f;//sphere radius for ground test
     public LayerMask groundMask;//set to "Ground" layer in Inspector
 
+    public AudioClip footStepSFX;
+
     private Rigidbody rb;//player rigid body
     private Vector2 moveInput;//WASD/Arrow as (x,y)
     private bool isGrounded;//true while on ground
+
+
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
         rb=GetComponent<Rigidbody>();//cache rigidbody
+                                     //        PlayerInput=new PlayerInput();//aparently not used but is in video so I added it, but commented out though
+        StartCoroutine(PlayFootStep());
     }
 
     void Update()
@@ -63,6 +70,18 @@ public class PlayerMovement : MonoBehaviour
         //true if sphere overlaps any collider on groundMask within groundDistance
         isGrounded = Physics.CheckSphere(groundCheck.position, groundDistance, groundMask);
 
+    }
+
+    IEnumerator PlayFootStep()
+    {
+        while (true)
+        {
+            if (rb.linearVelocity.magnitude > 0.1f && isGrounded) 
+            {
+                AudioManager.Instance.PlaySFX(footStepSFX, 0.5f);
+            }
+            yield return new WaitForSeconds(0.5f);
+        }
     }
 
 }

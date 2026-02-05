@@ -7,12 +7,10 @@ using UnityEngine.AI;                           // Needed for NavMeshAgent
 public class Enemy : MonoBehaviour
 {
     public int health = 100;                     // Enemy health
-    private Rigidbody rb;                        // Rigidbody reference
-    private Renderer rend;                       // Renderer reference
-    private Material originalMat;                // Original material for blinking effect
     public Material hitMat;                      // Material to show when enemy is hit
 
-    private NavMeshAgent agent;                  // NavMeshAgent for pathfinding
+    public AudioClip shootingSFX;
+
     public int currentPointIndex = 0;            // Current patrol point index
     public Vector3 currentTarget;                // Current patrol target
     public float positionThreshold = 2f;         // Distance considered "reached" for patrol point
@@ -21,10 +19,16 @@ public class Enemy : MonoBehaviour
     public float maxVisionDistance = 10f;        // How far enemy can see the player
     public float minimumChasingHealth = 30f;     // Below this, enemy will avoid player
     public Transform[] patrolPoints;             // Array of patrol points
+
+    private Rigidbody rb;                        // Rigidbody reference
+    private Renderer rend;                       // Renderer reference
+    private Material originalMat;                // Original material for blinking effect
+
     private float idleTimeCounter;               // Counter for idle duration
     private Transform playerTransform;           // Reference to player
     private bool canSeePlayer;                   // Flag to indicate if player is visible
     private Vector3 lastKnownPlayerPosition;     // Last position where player was seen
+    private NavMeshAgent agent;                  // NavMeshAgent for pathfinding
 
     // Enemy states
     public enum State { Idle, Patrolling, Chasing, Attacking }
@@ -95,7 +99,7 @@ public class Enemy : MonoBehaviour
     private void OnCollisionEnter(Collision collision)
     {
         if (!this.enabled) return; // If enemy is dead, do nothing
-        if (collision.gameObject.CompareTag("damage"))
+        if (collision.gameObject.CompareTag("Damage"))
         {
             health -= 10;           // Lose 10 health per hit
             if (health <= 0)
@@ -111,14 +115,11 @@ public class Enemy : MonoBehaviour
 
     private void Die()
     {
-        if (!this.enabled) return;         // Stop all actions if dead
-        rb.freezeRotation = false;         // Allow enemy to tip over
-        transform.rotation = Quaternion.Euler(
-            transform.rotation.x,
-            transform.rotation.y,
-            transform.rotation.z + 5f // Slight rotation on Z so enemy tips over
-        );
-        this.enabled = false;              // Disable script
+        Destroy(gameObject);
+        //if (!this.enabled) return;         // Stop all actions if dead
+        //rb.freezeRotation = false;         // Allow enemy to tip over
+        //transform.rotation = Quaternion.Euler(transform.rotation.x, transform.rotation.y, transform.rotation.z + 15f); // Slight rotation on Z so enemy tips over
+        //this.enabled = false;              // Disable script
     }
 
     IEnumerator Blink()
@@ -215,10 +216,11 @@ public class Enemy : MonoBehaviour
 
     private void SetLastKnownPlayerPosition()
     {
-        if (canSeePlayer)
+        if (canSeePlayer && (health > minimumChasingHealth))
         {
             lastKnownPlayerPosition = playerTransform.position;
         }
+        else { agent.SetDestination(currentTarget); }
     }
 
     private void LookForPlayer()
@@ -261,19 +263,13 @@ public class Enemy : MonoBehaviour
             // Apply inaccuracy and rotate bullet towards player
             bulletRotation *= Quaternion.Euler(randomPitch, randomYaw + 90f, 0f);
 
+            AudioManager.Instance.PlaySFX(shootingSFX, 0.5f);
+
             // Spawn the bullet prefab at the spawn point with calculated rotation
-            Instantiate(
-                bulletPrefab,
-                bulletSpawnPoint.position,
-                bulletRotation
-            );
+            Instantiate(bulletPrefab, bulletSpawnPoint.position, bulletRotation);
 
             // Spawn weapon flash effect at the spawn point
-            Instantiate(
-                weaponFlash,
-                bulletSpawnPoint.position,
-                bulletSpawnPoint.rotation
-            );
+            Instantiate(weaponFlash, bulletSpawnPoint.position, bulletSpawnPoint.rotation);
 
             // Record the time of this shot
             lastShotTime = Time.time;
